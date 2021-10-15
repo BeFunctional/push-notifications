@@ -36,6 +36,7 @@
 
 module Network.PushNotification.IOS where
 
+import Control.Monad.Fail (fail)
 import Control.Exception (bracket, catch, IOException)
 import Data.Binary.Put
 import Data.Convertible (convert)
