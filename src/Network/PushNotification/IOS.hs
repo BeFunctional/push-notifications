@@ -142,11 +142,10 @@ withAPNSSocket (APNSConfig server keyfile certfile) f = withOpenSSL $ do
     SSL.shutdown sslsocket Unidirectional
 
 -- | Send a message through the SSL socket
-sendApplePushMessage :: SSL -> ApplePushMessage -> IO ()
+sendApplePushMessage :: SSL -> ApplePushMessage -> Either String (IO ())
 sendApplePushMessage sslsocket m =
-  let lpdu = runPut $ buildPDU m
-      pdu = B.concat $ BL.toChunks lpdu
-  in SSL.write sslsocket pdu
+  let epdu = B.concat . BL.toChunks . runPut <$> buildPDU m
+  in SSL.write sslsocket <$> epdu
 
 tokenLength :: Num a => a
 tokenLength = 32
@@ -154,11 +153,11 @@ tokenLength = 32
 maxPayloadLength :: Num a => a
 maxPayloadLength = 2048
 
-buildPDU :: ApplePushMessage -> Put
+buildPDU :: ApplePushMessage -> Either String Put
 buildPDU (ApplePushMessage token payload expiry)
-  | B.length token /= tokenLength = fail "Invalid token"
-  | BL.length payload >= maxPayloadLength = fail "Payload too large"
-  | otherwise = do
+  | B.length token /= tokenLength = Left "Invalid token"
+  | BL.length payload >= maxPayloadLength = Left "Payload too large"
+  | otherwise = Right $ do
     putWord8 1
     putWord32be 1
     putWord32be expiry
